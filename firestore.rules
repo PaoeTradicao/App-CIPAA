@@ -1,0 +1,41 @@
+rules_version = '2';
+
+// Regras de partida para o Firebase Console (Firestore > Regras).
+// Ajuste conforme a necessidade real da equipe.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function autenticado() {
+      return request.auth != null;
+    }
+
+    // Cada colaborador só edita o próprio perfil, mas todos
+    // autenticados podem ler nomes/cargos (aparecem no relatório).
+    match /colaboradores/{uid} {
+      allow read: if autenticado();
+      allow create: if autenticado() && request.auth.uid == uid;
+      allow update: if autenticado() && request.auth.uid == uid;
+      allow delete: if false;
+    }
+
+    // Qualquer membro autenticado pode criar e editar setores/checklists.
+    match /setores/{setorId} {
+      allow read, create, update, delete: if autenticado();
+    }
+
+    // Vistorias: qualquer membro cria; ninguém edita depois de salva
+    // (garante que o registro histórico não seja alterado).
+    match /vistorias/{vistoriaId} {
+      allow read, create: if autenticado();
+      allow update, delete: if false;
+    }
+
+    // Observações: qualquer membro cria; qualquer membro autenticado
+    // pode atualizar o status (ex.: marcar como resolvida), já que a
+    // resolução pode vir de gerência/RH repassada por um membro da CIPA.
+    match /observacoes/{obsId} {
+      allow read, create, update: if autenticado();
+      allow delete: if false;
+    }
+  }
+}
